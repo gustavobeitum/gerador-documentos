@@ -15,6 +15,8 @@ class DocumentoController extends Controller
     {
         $caminho = $this->service->gerarDocumento($id);
 
-        return response()->download($caminho);
+        return response()
+            ->download($caminho)
+            ->deleteFileAfterSend(true);
     }
 }

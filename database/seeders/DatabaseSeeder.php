@@ -31,6 +31,11 @@ class DatabaseSeeder extends Seeder
             ['codigo' => 'RNF03', 'tipo' => 'nao-funcional', 'descricao' => 'O armazenamento de dados deve seguir as normas da LGPD.'],
         ];
 
+        $projeto->diagramas()->create([
+            'tipo' => 'Diagrama de Caso de Uso',
+            'caminho_imagem' => 'testes/caso_de_uso.jpeg'
+        ]);
+
         // Inserindo no banco
         foreach (array_merge($funcionais, $naoFuncionais) as $requisito) {
             $projeto->requisitos()->create($requisito);
