@@ -30,46 +30,37 @@ class DocumentoService
 
             //Processar Diagramas (Imagens)
             $diagramas = $projeto->diagramas;
+
             if ($diagramas->isEmpty()) {
+                //Remove o bloco inteiro se não houver diagramas registrados
                 $template->cloneBlock('bloco_diagramas', 0);
             } else {
+                //Clona o bloco para cada diagrama encontrado no banco
                 $template->cloneBlock('bloco_diagramas', $diagramas->count(), true, true);
+
                 foreach ($diagramas as $index => $diag) {
                     $pos = $index + 1;
 
+                    //Injeta a subnumeração para formar o 3.1, 3.2...
+                    $template->setValue('posicao_diagrama#' . $pos, $pos);
+
+                    //Injeta o nome do diagrama
                     $template->setValue('tipo_diagrama#' . $pos, $diag->tipo);
 
                     $origem = $diag->caminho_imagem;
-                    $tempPath = null;
+                    $pathFinal = storage_path('app/public/' . $origem);
 
-                    try {
-                        //Verifica se é uma URL externa
-                        if (filter_var($origem, FILTER_VALIDATE_URL)) {
-                            //Se for URL, baixa temporariamente
-                            $conteudo = file_get_contents($origem);
-                            $tempPath = tempnam(sys_get_temp_dir(), 'img_');
-                            file_put_contents($tempPath, $conteudo);
-                            $pathFinal = $tempPath;
-                        } else {
-                            //Se for local, usa o caminho do storage
-                            $pathFinal = storage_path('app/public/' . $origem);
-                        }
-
-                        if (file_exists($pathFinal)) {
-                            $template->setImageValue('img_diagrama#' . $pos, [
-                                'path' => $pathFinal,
-                                //Define tamanho da imagem
-                                'width' => 600,
-                                'height' => 900,
-                                'ratio' => true
-                            ]);
-                        }
-
-                        //Deleta o temporário se ele foi criado
-                        if ($tempPath && file_exists($tempPath)) unlink($tempPath);
-
-                    } catch (\Exception $e) {
-                        $template->setValue('img_diagrama#' . $pos, 'Erro ao carregar imagem.');
+                    //Se a imagem existir fisicamente, ela é inserida
+                    if (!empty($origem) && file_exists($pathFinal)) {
+                        $template->setImageValue('img_diagrama#' . $pos, [
+                            'path'   => $pathFinal,
+                            'width'  => 450,
+                            'height' => 700,
+                            'ratio'  => true
+                        ]);
+                    } else {
+                        //Se não houver imagem, limpamos o placeholder para aparecer apenas o nome
+                        $template->setValue('img_diagrama#' . $pos, '');
                     }
                 }
             }
