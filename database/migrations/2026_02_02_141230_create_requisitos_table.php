@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('requisitos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('projeto_id')->constrained()->onDelete('cascade');
-            $table->string('codigo');
+            $table->string('codigo')->nullable();;
             $table->enum('tipo', ['funcional', 'nao-funcional']);
             $table->text('descricao');
             $table->timestamps();

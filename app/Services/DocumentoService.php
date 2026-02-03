@@ -21,14 +21,14 @@ class DocumentoService
 
             $template = new TemplateProcessor($templatePath);
 
-            // Dados básicos
+            //Dados - Titulo e descrição
             $template->setValue('titulo_projeto', $projeto->titulo ?? 'Título não informado');
             $template->setValue('descricao', $projeto->descricao ?? 'Descrição não informada');
 
-            // Processar Requisitos
+            //Processar Requisitos
             $this->processarRequisitos($template, $projeto);
 
-            // Processar Diagramas (Imagens)
+            //Processar Diagramas (Imagens)
             $diagramas = $projeto->diagramas;
             if ($diagramas->isEmpty()) {
                 $template->cloneBlock('bloco_diagramas', 0);
@@ -43,28 +43,29 @@ class DocumentoService
                     $tempPath = null;
 
                     try {
-                        // Verifica se é uma URL externa
+                        //Verifica se é uma URL externa
                         if (filter_var($origem, FILTER_VALIDATE_URL)) {
-                            // Se for URL, baixa temporariamente
+                            //Se for URL, baixa temporariamente
                             $conteudo = file_get_contents($origem);
                             $tempPath = tempnam(sys_get_temp_dir(), 'img_');
                             file_put_contents($tempPath, $conteudo);
                             $pathFinal = $tempPath;
                         } else {
-                            // Se for local, usa o caminho do storage
+                            //Se for local, usa o caminho do storage
                             $pathFinal = storage_path('app/public/' . $origem);
                         }
 
                         if (file_exists($pathFinal)) {
                             $template->setImageValue('img_diagrama#' . $pos, [
                                 'path' => $pathFinal,
+                                //Define tamanho da imagem
                                 'width' => 600,
                                 'height' => 900,
                                 'ratio' => true
                             ]);
                         }
 
-                        // Deleta o temporário se ele foi criado
+                        //Deleta o temporário se ele foi criado
                         if ($tempPath && file_exists($tempPath)) unlink($tempPath);
 
                     } catch (\Exception $e) {
@@ -73,7 +74,9 @@ class DocumentoService
                 }
             }
 
+            //Define título do aquivo
             $nomeArquivo = Str::slug($projeto->titulo ?? 'documento');
+
             $savePath =  storage_path('app/public/') . '/doc_projeto_' . $nomeArquivo . '.docx';
             $template->saveAs($savePath);
 
@@ -88,14 +91,34 @@ class DocumentoService
     private function processarRequisitos($template, $projeto)
     {
         foreach (['funcional' => 'requisitos_f', 'nao-funcional' => 'requisitos_nf'] as $tipo => $placeholder) {
-            $reqs = $projeto->requisitos->where('tipo', $tipo);
+            $reqs = $projeto->requisitos->filter(function($req) use ($tipo) {
+                return trim(strtolower($req->tipo)) === strtolower($tipo);
+            });
+
+            //Verifica se a lista de requisitos está vazia
             if ($reqs->isEmpty()) {
+                //Cria uma linha padrão com mensagem de aviso
                 $template->cloneRow($placeholder, 1);
                 $template->setValue($placeholder . '#1', "Nenhum requisito {$tipo} cadastrado.");
             } else {
+                //Clona a linha da tabela conforme a quantidade de requisitos encontrados
                 $template->cloneRow($placeholder, $reqs->count());
+
+                //Reindexamos os valores para garantir que o índice comece em 0
                 foreach ($reqs->values() as $index => $req) {
-                    $template->setValue($placeholder . '#' . ($index + 1), "{$req->codigo} - {$req->descricao}");
+                    $numero = $index + 1; // Começa em 1
+
+                    //Define o prefixo: RF para Funcional, RNF para Não Funcional
+                    $prefixo = ($tipo === 'funcional') ? 'RF' : 'RNF';
+
+                    //Formata o número com dois dígitos
+                    $codigoGerado = $prefixo . str_pad($numero, 2, '0', STR_PAD_LEFT);
+
+                    //Injeta no Word RF01 - Descrição do requisito
+                    $template->setValue(
+                        $placeholder . '#' . $numero,
+                        "{$codigoGerado} - " . ($req->descricao ?? 'Sem descrição')
+                    );
                 }
             }
         }
